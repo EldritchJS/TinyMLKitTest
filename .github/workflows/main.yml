@@ -7,8 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # find examples -type f -name "*.ino" | rev | cut -d/ -f2- | rev  | sort | sed -z 's/\n/, /g'
-        example: [221112-170521-nano33ble]
+        example: [.]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2

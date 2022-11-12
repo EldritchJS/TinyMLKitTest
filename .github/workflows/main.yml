@@ -1,0 +1,27 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # find examples -type f -name "*.ino" | rev | cut -d/ -f2- | rev  | sort | sed -z 's/\n/, /g'
+        example: [221112-170521-nano33ble]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - name: Install PlatformIO
+        run: |
+          pip install -U pip setuptools wheel
+          pip install platformio 
+      - name: Install LSM9DS1 Library
+        run: pio lib -g install arduino-libraries/Arduino_LSM9DS1
+      - name: Install LPS22HB Library
+        run: pio lib -g install arduino-libraries/Arduino_LPS22HB
+      - name: Run PlatformIO
+        run: |
+          pio ci --lib="." --board=nano33ble
+        env:
+          PLATFORMIO_CI_SRC: ${{ matrix.example }}

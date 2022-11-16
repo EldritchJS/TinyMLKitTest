@@ -1,5 +1,6 @@
 /*
-  Waits for acceleration to go above a threshold, then sends IMU and environmental readings over debug and uart
+  Waits for acceleration to go above a threshold, then sends IMU and environmental readings over Serial and Serial1
+  Also sends readings when ReqReport is received on Serial1
 */
 
 #include <Arduino_LSM9DS1.h>
@@ -9,12 +10,12 @@ const float accelerationThreshold = 2.5; // threshold of significant motion in g
 char outBuf[2048];
 float aX, aY, aZ, gX, gY, gZ, mX, mY, mZ;
 float pressure, temperature, altitude;
-bool motion = false;
+bool report = false;
 
 void setup() 
 {
   Serial.begin(9600);
-  Serial1.begin(115200);
+  Serial1.begin(9600);
   while (!Serial);
 
   if (!IMU.begin()) 
@@ -35,7 +36,7 @@ void setup()
 
 void sendReport()
 {
-  sprintf(outBuf, "{\"Accel:\"{\"x\":%.2f,\"y\":%.2f,\"z\":%.2f},\"Mag\":{\"x\":%.2f,\"y\":%.2f,\"z\":%.2f},\"Gyro\":{\"x\":%.2f\"y\":%.2f\":z\":%.2f},\"Pressure\":%.2f,\"Temp\":%.2f,\"Alt\":%.2f}",aX,aY,aZ,gX,gY,gZ,mX,mY,mZ,pressure,temperature,altitude);
+  sprintf(outBuf, "{\"Accel\":{\"x\":%.2f,\"y\":%.2f,\"z\":%.2f},\"Gyro\":{\"x\":%.2f,\"y\":%.2f,\"z\":%.2f},\"Mag\":{\"x\":%.2f,\"y\":%.2f,\"z\":%.2f},\"Pressure\":%.2f,\"Temp\":%.2f,\"Alt\":%.2f}",aX,aY,aZ,gX,gY,gZ,mX,mY,mZ,pressure,temperature,altitude);
   Serial1.println(outBuf);
 }
 
@@ -47,14 +48,19 @@ void loop()
   {
     inString = Serial1.readString();
     inString.trim();
-    if (inString=="REPORT")
+    if (inString=="ReqReport")
     {
       Serial.println("Report requested via UART");
-      sendReport();
+      report=true;
+    }
+    else
+    {
+      Serial.println("Received something other than ReqReport");
+      Serial.println(inString);
     }
   }
   
-  if ((!motion)&&(IMU.accelerationAvailable()))
+  if ((!report)&&(IMU.accelerationAvailable()))
   {
     // read the acceleration data
     IMU.readAcceleration(aX, aY, aZ);
@@ -65,11 +71,12 @@ void loop()
     // check if it's above the threshold
     if (aSum >= accelerationThreshold) 
     {
-      motion = true;
+      Serial.println("Acceleration threshold exceeded");
+      report = true;
     }
   }
 
-  if(motion) 
+  if(report) 
   {
     // Check data available
     if (IMU.accelerationAvailable() && IMU.gyroscopeAvailable() && IMU.magneticFieldAvailable()) 
@@ -88,7 +95,7 @@ void loop()
       Serial.println(outBuf);
  
       sendReport();
-      motion = false;
+      report = false;
     }
   }
 }
